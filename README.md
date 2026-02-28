@@ -2,6 +2,8 @@
 
 Zero-cost, local-first long-term memory for OpenClaw (or any AI assistant). Index your entire Telegram chat history and search it semantically — no cloud APIs, no token costs.
 
+📖 **Read the full story:** [Medium](https://medium.com/@alextitus/from-5-query-to-free-memory-a-month-of-building-ai-that-actually-remembers-966dc622178b) | [Хабр](https://habr.com/ru/sandbox/274502/)
+
 ## What This Does
 
 - Exports your Telegram chat history to searchable markdown chunks
