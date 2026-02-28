@@ -1,0 +1,10 @@
+{
+  "_comment": "Add this to your openclaw.json under agents.defaults",
+  "memorySearch": {
+    "provider": "local",
+    "enabled": true,
+    "local": {
+      "modelPath": "hf:nomic-ai/nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q8_0.gguf"
+    }
+  }
+}

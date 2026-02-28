@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.session
+result.json
+tg_chunks/
+.DS_Store
