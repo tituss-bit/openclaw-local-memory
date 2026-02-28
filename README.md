@@ -1,8 +1,10 @@
-# Local Memory for AI Assistants
+# 🧠 Local Memory for AI Assistants
 
-Zero-cost, local-first long-term memory for OpenClaw (or any AI assistant). Index your entire Telegram chat history and search it semantically — no cloud APIs, no token costs.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![OpenClaw](https://img.shields.io/badge/Built%20with-OpenClaw-purple)](https://github.com/openclaw/openclaw)
+[![Embedding](https://img.shields.io/badge/Embeddings-nomic--embed--text%20v1.5-blue)](https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF)
 
-📖 **Read the full story:** [Medium](https://medium.com/@alextitus/from-5-query-to-free-memory-a-month-of-building-ai-that-actually-remembers-966dc622178b) | [Хабр](https://habr.com/ru/sandbox/274502/)
+**Zero-cost, local-first long-term memory for AI assistants.** Index your entire chat history and search it semantically — no cloud APIs, no token costs, no privacy concerns. Works with OpenClaw, Claude, or any LLM agent.
 
 ## What This Does
 
