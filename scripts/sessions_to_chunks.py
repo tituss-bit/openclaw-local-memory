@@ -34,6 +34,28 @@ def get_text(message_obj):
         return " ".join(parts).strip()
     return ""
 
+EXPECTED_KEYS = {"type", "id", "parentId", "timestamp", "message"}
+
+def validate_format(filepath):
+    """Check that JSONL structure matches expected OpenClaw format. Returns (ok, error)."""
+    with open(filepath) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                return False, f"Invalid JSON in {filepath}"
+            if obj.get("type") == "message":
+                if "message" not in obj or "timestamp" not in obj:
+                    return False, f"Missing 'message' or 'timestamp' in message entry: {filepath}"
+                msg = obj["message"]
+                if "role" not in msg or "content" not in msg:
+                    return False, f"Missing 'role' or 'content' in message.message: {filepath}"
+                return True, None
+    return True, None  # no messages found, but valid
+
 def process_session(filepath):
     """Parse one JSONL session file into (date, time, role, text) tuples."""
     entries = []
@@ -95,6 +117,13 @@ def main():
         
         if key in processed:
             continue
+        
+        # Validate format before processing
+        ok, err = validate_format(sf)
+        if not ok:
+            print(f"⚠️ FORMAT CHANGED: {err}", file=sys.stderr)
+            print(f"OpenClaw JSONL format may have changed after update. Script needs fixing.", file=sys.stderr)
+            sys.exit(2)
         
         new_files.append(key)
         entries = process_session(sf)
