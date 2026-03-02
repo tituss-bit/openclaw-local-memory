@@ -83,9 +83,7 @@ def process_session(filepath):
             # Skip heartbeat prompts
             if text.startswith("Read HEARTBEAT.md"):
                 continue
-            # Truncate very long messages
-            if len(text) > 500:
-                text = text[:500] + "..."
+            # No truncation — preserve every word for search
             
             ts = obj.get("timestamp", "")
             date = ts[:10]
