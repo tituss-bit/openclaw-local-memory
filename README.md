@@ -4,14 +4,15 @@
 [![OpenClaw](https://img.shields.io/badge/Built%20with-OpenClaw-purple)](https://github.com/openclaw/openclaw)
 [![Embedding](https://img.shields.io/badge/Embeddings-nomic--embed--text%20v1.5-blue)](https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF)
 
-**Zero-cost, local-first long-term memory for AI assistants.** Index your entire chat history and search it semantically — no cloud APIs, no token costs, no privacy concerns. Works with OpenClaw, Claude, or any LLM agent.
+**Zero-cost, local-first long-term memory for AI assistants.** Index your entire chat history and live sessions — no cloud APIs, no token costs, no privacy concerns. Works with OpenClaw, Claude, or any LLM agent.
 
 ## What This Does
 
 - Exports your Telegram chat history to searchable markdown chunks
+- **Auto-indexes live OpenClaw sessions** — no manual export needed for ongoing conversations
 - Indexes everything locally using `nomic-embed-text-v1.5` embeddings + `sqlite-vec`
 - Provides instant semantic search across thousands of messages
-- Syncs memory between machines via git
+- Optional git backup to a second machine
 
 ## Why?
 
@@ -62,12 +63,21 @@ Add to your `openclaw.json` under `agents.defaults`:
   "memorySearch": {
     "provider": "local",
     "enabled": true,
-    "local": {
-      "modelPath": "hf:nomic-ai/nomic-embed-text-v1.5-GGUF/nomic-embed-text-v1.5.Q8_0.gguf"
+    "sources": ["memory", "sessions"],
+    "sync": {
+      "intervalMinutes": 10,
+      "watch": true,
+      "onSessionStart": true
     }
   }
 }
 ```
+
+Key settings:
+- `sources: ["memory", "sessions"]` — indexes both memory files AND live session transcripts
+- `sync.intervalMinutes: 10` — re-indexes every 10 minutes
+- `sync.watch: true` — watches for file changes in real-time
+- `sync.onSessionStart: true` — ensures fresh index on every new session
 
 ### 4. Index
 
@@ -79,50 +89,71 @@ openclaw memory index --force
 
 Your AI assistant now has full memory. Ask it anything about past conversations — it searches locally, instantly, for free.
 
-## Git Sync (Multi-Machine)
+## Auto-Indexing Live Sessions
 
-Keep memory in sync between machines without cloud services:
+OpenClaw stores session transcripts as JSONL files. With `sources: ["sessions"]` enabled, these are automatically indexed alongside your memory files.
+
+For additional control, use `scripts/sessions_to_chunks.py` to convert session transcripts into readable markdown chunks:
 
 ```bash
-# On machine A (source of truth)
+python scripts/sessions_to_chunks.py ~/.openclaw/agents/main/sessions/ memory/sessions/
+```
+
+This filters out heartbeats and system noise, keeping only human↔assistant dialogue.
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│                   Mac (Gateway Host)                 │
+│                                                      │
+│  Telegram ←→ OpenClaw Gateway ←→ Claude/LLM          │
+│                    │                                  │
+│                    ↓                                  │
+│  Session JSONL → auto-index ──┐                      │
+│                               ↓                      │
+│  memory/*.md ──────────→ nomic-embed-text v1.5       │
+│  memory/tg_history/*.md ─┘         ↓                 │
+│                              sqlite-vec (local DB)   │
+│                                    ↓                 │
+│                            memory_search("query")    │
+│                                                      │
+│  Sync: watch + reindex every 10 min                  │
+└──────────────────────┬──────────────────────────────┘
+                       │ git push (backup)
+                       ↓
+              ┌─────────────────┐
+              │  Remote Server   │
+              │  (git backup)    │
+              │  pull every 5min │
+              └─────────────────┘
+```
+
+**Single-machine design:** Everything runs on the gateway host. No remote indexing, no distributed components. The remote server is just a git backup — if it's offline, nothing breaks.
+
+## Git Backup (Optional)
+
+Keep a copy of your memory on a second machine:
+
+```bash
+# On gateway host
 cd memory/
 git init && git add -A && git commit -m "init"
 git remote add origin user@server:~/memory.git
 git push -u origin main
 
-# On machine B
-git clone user@server:~/memory.git ~/.openclaw/workspace/memory
+# On backup server (cron, every 5 min)
+*/5 * * * * cd ~/memory && git pull origin main --quiet
 ```
 
-Auto-sync with cron + post-merge reindex hook:
-```bash
-# cron (every 5 min)
-*/5 * * * * cd ~/.openclaw/workspace/memory && git pull origin main --quiet
-
-# .git/hooks/post-merge
-#!/bin/bash
-openclaw memory index --force &>/dev/null &
-```
-
-## Architecture
-
-```
-User (Telegram) → Export JSON → Chunk Script → memory/tg_history/*.md
-                                                      ↓
-                                              openclaw memory index
-                                                      ↓
-                                              nomic-embed-text v1.5
-                                                      ↓
-                                              sqlite-vec (local DB)
-                                                      ↓
-                                              Semantic Search (free, instant)
-```
+This is purely for redundancy. The backup server doesn't run any indexing or search.
 
 ## Scaling
 
 | Messages | Chunks | Index Time | Search Quality |
 |----------|--------|-----------|---------------|
 | 7K | 157 | 2.4s | Excellent |
+| 10K+ | 429 | ~8s | Excellent |
 | 100K | ~2,000 | ~30s | Excellent |
 | 1M+ | ~20,000 | ~5min | Good (consider knowledge graph) |
 
@@ -133,15 +164,15 @@ User (Telegram) → Export JSON → Chunk Script → memory/tg_history/*.md
 - Python 3.10+ (for export/chunk scripts)
 - ~100MB disk for embeddings model
 
-No GPU required. Works on CPU.
+No GPU required. Works on CPU (M-series Mac, any x86 laptop).
 
 ## What's Next
 
-This is Phase 1. We're building **Vigil v2** — a full autonomous memory system with:
-- Knowledge graph (Kùzu) for entity relationships
+This is Phase 1. We're building **Vigil** — a full autonomous memory system with:
+- Knowledge graph for entity relationships
 - Hybrid search (vector + BM25 keyword via SQLite FTS5)
-- Local LLM entity extraction (Qwen 3)
-- Neurosignals (dopamine/cortisol metrics for memory salience)
+- Local LLM entity extraction
+- Continuity protocols (auto-checkpoint, session recovery)
 
 Stay tuned.
 
