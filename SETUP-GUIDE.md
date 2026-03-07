@@ -191,7 +191,60 @@ Now typing `/mem` in chat triggers the full workflow.
 
 ---
 
-## Step 6 (OPTIONAL): GPU Server Setup
+## Step 6: Set Up Vigildog (System Watchdog)
+
+Vigildog is a system-level watchdog that runs via crontab every 5 minutes, **independent of the gateway**. If the gateway crashes, vigildog keeps running and restarts it.
+
+### What it does (every 5 min)
+
+1. Gateway health check → restart if down
+2. Ollama health check → restart if down
+3. Memory reindex if batch is disabled
+4. Config backup (detect changes)
+5. JSONL session archive (rsync to backup dir)
+6. Session chunking (JSONL → markdown via `sessions_to_chunks.py`)
+7. Git push (with fallback IPs)
+8. MEMORY.md rotation (>200 lines, >7 days → archive/)
+9. Log rotation (keep 1000 lines)
+
+### Install
+
+```bash
+cp scripts/vigildog.sh ~/clawd/scripts/vigildog.sh
+chmod +x ~/clawd/scripts/vigildog.sh
+```
+
+Edit the script — replace paths and server IPs for your environment.
+
+### Add to crontab
+
+```bash
+crontab -e
+# Add this line:
+*/5 * * * * /path/to/clawd/scripts/vigildog.sh
+```
+
+### How it fits the pipeline
+
+```
+vigildog (5 min, crontab)          heartbeat (30 min, OpenClaw cron)
+  │                                   │
+  └─ JSONL → chunks (no LLM)         └─ chunks → summaries → MEMORY.md (uses LLM)
+```
+
+- **vigildog** creates raw markdown chunks from session transcripts — mechanical, no API cost
+- **heartbeat** reads those chunks and generates human-readable summaries in MEMORY.md — requires gateway + model
+- Together: vigildog feeds the pipeline, heartbeat distills it
+
+### Logs
+
+```
+~/clawd/logs/vigildog.log
+```
+
+---
+
+## Step 7 (OPTIONAL): GPU Server Setup
 
 For local LLM inference, embedding, or git backup.
 
@@ -228,7 +281,7 @@ git push -u origin main
 
 ---
 
-## Step 7 (OPTIONAL): Ethernet Toggle
+## Step 8 (OPTIONAL): Ethernet Toggle
 
 For a direct ethernet connection to your GPU server (faster than WiFi for large transfers):
 
@@ -255,6 +308,8 @@ After setup, verify:
 | Golden rules persist | Long conversation — agent still follows double confirmation |
 | Hook fires | Check `~/.openclaw/golden-rules-counter.json` |
 | Session chunking | Check `memory/sessions/` for new .md files |
+| Vigildog running | `tail ~/clawd/logs/vigildog.log` — check for recent entries |
+| Vigildog crontab | `crontab -l \| grep vigildog` — verify cron entry exists |
 
 ## Troubleshooting
 

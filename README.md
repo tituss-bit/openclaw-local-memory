@@ -9,6 +9,8 @@ Vigil is a framework for building AI agents that don't forget — their memory, 
 
 The result: an agent that remembers past conversations, follows its behavioral constraints throughout, and maintains its personality across sessions — all running locally, no cloud APIs, no token costs for memory.
 
+> **Already have OpenClaw running?** See **[UPGRADE.md](./UPGRADE.md)** to add Vigil on top of your existing installation.
+
 ---
 
 ## What's In This Repo
