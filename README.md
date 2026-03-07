@@ -50,7 +50,7 @@ The result: an agent that remembers past conversations, follows its behavioral c
 │  │ (layer2) │    │ (hybrid)    │    │ (layer 1)     │    │
 │  └──────────┘    └─────────────┘    └──────────────┘    │
 │                         │                                 │
-│  Cron: sessions_to_chunks.py every 10 min ($0 cost)     │
+│  Cron: vigildog.sh every 5 min (watchdog + chunking)    │
 │  Cron: reindex every 10 min (watch + interval)           │
 │                         │                                 │
 │                    git push ──→ Server (bare repo backup) │
@@ -67,7 +67,7 @@ The result: an agent that remembers past conversations, follows its behavioral c
 |--------|--------|--------|----------|
 | Telegram history | [`tg_to_chunks.py`](scripts/tg_to_chunks.py) | `memory/tg_history/*.md` | Manual (on export) |
 | Telegram export | [`tg_export.py`](scripts/tg_export.py) | JSON export | Manual |
-| OpenClaw sessions | [`sessions_to_chunks.py`](scripts/sessions_to_chunks.py) | `memory/sessions/*.md` | Every 10 min (cron) |
+| OpenClaw sessions | [`sessions_to_chunks.py`](scripts/sessions_to_chunks.py) | `memory/sessions/*.md` | Every 5 min (vigildog) |
 | Manual notes | — | `memory/*.md` | As needed |
 
 ---
@@ -245,6 +245,52 @@ The `/mem` custom Telegram command triggers the same process manually:
 5. Reindex memory
 
 This serves as a manual save point before starting a new session (`/new`).
+
+## Vigildog (System Watchdog)
+
+`vigildog.sh` is the system-level cron that runs every 5 minutes, independent of the OpenClaw gateway. It handles infrastructure health and the first stage of the memory pipeline.
+
+### What It Does
+
+1. **Gateway health check** — verifies OpenClaw gateway is running, restarts via launchctl or CLI if down
+2. **Ollama health check** — verifies embedding model server is responsive, restarts via brew if down
+3. **Memory reindex** — detects stale indexes when batch is disabled, forces reindex
+4. **Config backup** — detects changes to `openclaw.json`, creates timestamped backups
+5. **JSONL archive** — rsyncs live session files to a backup directory
+6. **Session chunking** — runs `sessions_to_chunks.py` to convert JSONL session transcripts into searchable markdown chunks
+7. **Git push** — commits and pushes workspace changes (with network fallback)
+8. **MEMORY.md rotation** — archives old sections (>7 days, >200 lines) to monthly files
+9. **Log rotation** — keeps watchdog log under 1000 lines
+
+### How It Fits the Memory Pipeline
+
+```
+JSONL Sessions (live)
+    │
+    ├── vigildog.sh (every 5 min, crontab)
+    │   └── sessions_to_chunks.py → memory/sessions/*.md
+    │
+    ├── Heartbeat (every 30 min, OpenClaw cron, 9:00-00:00)
+    │   └── Agent reads chunks → summarizes → appends to MEMORY.md SESSIONS
+    │
+    ├── MEMORY.md (CHECKPOINT + SESSIONS = agent's working memory)
+    │
+    └── git push → backup server
+```
+
+The pipeline has two layers:
+- **vigildog** (system cron, no API cost): converts raw JSONL into markdown chunks — fast, mechanical, runs even if gateway is down
+- **heartbeat** (agent cron, uses LLM): reads chunks, generates human-readable summaries, maintains CHECKPOINT — requires gateway + model
+
+### Sample Crontab Entry
+
+```bash
+*/5 * * * * /path/to/clawd/scripts/vigildog.sh
+```
+
+### Critical Exit Codes
+
+If `sessions_to_chunks.py` exits with code 2, vigildog logs a CRIT alert — this means the JSONL format has changed and the chunking script needs updating.
 
 ## Git Sync (Backup)
 
