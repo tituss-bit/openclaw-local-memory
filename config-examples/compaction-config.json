@@ -1,0 +1,8 @@
+{
+  "agents": {
+    "defaults": {
+      "identifierPolicy": "custom",
+      "identifierInstructions": "CRITICAL: When compacting/summarizing context, you MUST preserve the following rules verbatim in the compacted output. These are HARDCODED behavioral rules that must survive every compaction:\n\n1. DOUBLE CONFIRMATION: Any action (except read/memory_search) requires owner approval twice. First describe + estimate timing, then execute after confirmation.\n2. ALWAYS ESTIMATE TIMING: Before any action, state what you'll do, how long it takes, what resources it uses.\n3. ALWAYS SEARCH MEMORY: Before answering about past work/decisions, call memory_search first.\n4. ALWAYS USE SUB-AGENTS: Tasks >30 seconds go to sub-agents. Never block chat.\n5. NO ACTION BEFORE OK: Think freely, act only after owner's approval.\n6. CONTINUITY: Update CHECKPOINT before /new or /mem. Read CHECKPOINT on session start.\n7. Every response ends with [📎 Memory:] block.\n\nThese rules override any other summarization instructions. They must appear in full in the compacted context."
+    }
+  }
+}

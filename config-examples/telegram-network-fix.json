@@ -1,0 +1,7 @@
+{
+  "channels": {
+    "telegram": {
+      "autoSelectFamily": false
+    }
+  }
+}

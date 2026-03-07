@@ -1,0 +1,8 @@
+{
+  "commands": {
+    "mem": {
+      "description": "Checkpoint memory, chunk sessions, commit to git, reindex",
+      "instructions": "When the user runs /mem, execute the following steps in order:\n1. Update ## CHECKPOINT at the top of memory/MEMORY.md (brief status, max 15 lines)\n2. Run: python3 <WORKSPACE_PATH>/scripts/sessions_to_chunks.py ~/.openclaw/agents/main/sessions/ <WORKSPACE_PATH>/memory/sessions/\n3. Run: cd <WORKSPACE_PATH>/memory && git add -A && git commit -m \"mem: checkpoint $(date +%Y-%m-%d-%H%M)\" && git push\n4. Run: openclaw memory index\n5. Confirm to user: what was saved, how many chunks, git status"
+    }
+  }
+}
