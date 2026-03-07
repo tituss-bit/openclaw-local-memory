@@ -199,6 +199,53 @@ These are duplicated in SOUL.md and AGENTS.md intentionally. Redundancy is prote
 
 ---
 
+## Auto-Summarization (Session Continuity)
+
+The main agent automatically maintains a structured memory file (`MEMORY.md`) with two key sections:
+
+- **CHECKPOINT** — brief status snapshot (max 15 lines), updated frequently
+- **SESSIONS** — detailed summaries of each work session (5-10 bullet points each)
+
+### How It Works
+
+Every hour, OpenClaw sends a heartbeat to the main agent. On each heartbeat, the agent:
+
+1. **Updates CHECKPOINT** — current status, active tasks, blockers
+2. **Scans for unsummarized sessions** — compares chunked session files in `memory/sessions/` against entries in the SESSIONS section of `MEMORY.md`
+3. **Generates summaries** — reads raw session chunks, produces concise bullet-point summaries
+4. **Appends to MEMORY.md** — new session summaries are added to the SESSIONS section
+5. **Commits and pushes** — `git add -A && git commit && git push`
+
+```
+Heartbeat (every hour)
+    │
+    ├── Update CHECKPOINT (brief status)
+    │
+    ├── Diff: memory/sessions/*.md vs MEMORY.md SESSIONS
+    │   └── New chunks found? → Read → Summarize → Append
+    │
+    ├── Git commit + push
+    │
+    └── Run health checks (Active Tasks)
+```
+
+### Why?
+
+Without this, session history only exists in raw chunks (`memory/sessions/session-2026-03-06-1.md`). These are machine-readable but not structured for quick context restoration.
+
+The SESSIONS section in `MEMORY.md` gives the agent (and you) a human-readable log of everything that happened — decisions made, code written, problems solved. On session start, the agent reads CHECKPOINT first and can quickly scan SESSIONS for deeper context.
+
+### Backup: /mem Command
+
+The `/mem` custom Telegram command triggers the same process manually:
+1. Update CHECKPOINT
+2. Summarize unsummarized sessions → append to SESSIONS
+3. Run `sessions_to_chunks.py` (convert live JSONL → markdown)
+4. Git commit + push
+5. Reindex memory
+
+This serves as a manual save point before starting a new session (`/new`).
+
 ## Git Sync (Backup)
 
 ```bash
